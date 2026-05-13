@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <link rel="manifest" href="manifest.json">
+
+<meta name="theme-color" content="#f6f3ee">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="BB Recipes">
+
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>My Baby Recipe Collection 🍳</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+body { background:#f6f3ee; }
+.card { backdrop-filter:blur(12px); background:rgba(255,255,255,0.78); }
+textarea { resize:none; }
+.recipe-section-title {
+  font-weight: 800;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: #18181b;
+  border-bottom: 1px solid #e4e4e7;
+  display: inline-block;
+}
+.ingredient-item { display: block; margin-bottom: 0.2rem; }
+.step-text { display: block; white-space: pre-wrap; margin-top: 0.2rem; }
+</style>
+</head>
+<body class="min-h-screen text-zinc-800">
+
+<div class="max-w-7xl mx-auto p-4 md:p-6">
+  <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+    <div>
+      <h1 class="text-4xl md:text-6xl font-black tracking-tight">🍳 My Baby Recipe Collection </h1>
+      <p class="text-zinc-500 mt-2">BLW Recipe Collection ✨ (完整列表)</p>
+    </div>
+    <button onclick="openModal()" class="bg-black text-white px-5 py-3 rounded-2xl font-semibold hover:scale-105 transition">
+      + 新增食譜
+    </button>
+  </div>
+
+  <div class="card rounded-3xl p-4 mb-6 border border-white/50 shadow-sm">
+    <div class="flex flex-col md:flex-row gap-3">
+      <input id="searchInput" type="text" placeholder="搜尋材料或標題..." class="flex-1 px-4 py-3 rounded-2xl border border-zinc-200 bg-white outline-none" />
+      <select id="tagFilter" class="px-4 py-3 rounded-2xl border border-zinc-200 bg-white">
+        <option value="">所有標籤</option>
+      </select>
+    </div>
+  </div>
+
+  <div id="recipeGrid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5"></div>
+</div>
+
+<div id="modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+  <div class="bg-white rounded-3xl w-full max-w-2xl p-6 max-h-[95vh] overflow-y-auto">
+    <div class="flex items-center justify-between mb-6">
+      <h2 class="text-2xl font-black">新增食譜</h2>
+      <button onclick="closeModal()" class="text-2xl">✕</button>
+    </div>
+    <div class="space-y-4">
+      <input id="title" type="text" placeholder="食譜名稱" class="w-full px-4 py-3 rounded-2xl border border-zinc-200" />
+      <input id="url" type="text" placeholder="網址 (選填)" class="w-full px-4 py-3 rounded-2xl border border-zinc-200" />
+      <input id="tags" type="text" placeholder="標籤 (以逗號分隔)" class="w-full px-4 py-3 rounded-2xl border border-zinc-200" />
+      <textarea id="notes" rows="10" placeholder="格式建議：&#10;材料：&#10;材料A&#10;材料B&#10;&#10;做法：&#10;做法文字內容" class="w-full px-4 py-3 rounded-2xl border border-zinc-200"></textarea>
+      <input id="image" type="file" accept="image/*" />
+      <button onclick="saveRecipe()" class="w-full bg-black text-white py-4 rounded-2xl font-bold">儲存食譜</button>
+    </div>
+  </div>
+</div>
+<script>
+let defaultRecipes = [
+  { id: 1, title: "南瓜地瓜餅", tags: ["南瓜", "地瓜", "焗"], notes: "材料：南瓜 75g、地瓜 75g、雞蛋 1隻、低筋麵粉 22g、黑芝麻 少許\n\n做法：\南瓜及地瓜蒸熟壓，加入雞蛋及低筋麵粉攪勻，灑上黑芝麻，200°C 焗 30 分鐘", url: "", image: "" },
+  { id: 2, title: "三文魚粟米紅蘿蔔炊飯", tags: ["三文魚", "炊飯", "主食"], notes: "材料：三文魚、粟米、紅蘿蔔、白飯\n\n做法：將三文魚、粟米及紅蘿蔔加入白飯一同炊煮即可", url: "", image: "" },
+  { id: 3, title: "寶寶麥樂雞（豆腐版）", tags: ["雞肉", "豆腐", "煎"], notes: "材料：雞肉 200g、板豆腐 95g、紅蘿蔔 20g、粟粉 20g\n\n做法：\雞肉、板豆腐及紅蘿蔔放入調理機打勻\加入粟粉再攪勻\整成小塊並煎至熟透", url: "", image: "" },
+  { id: 4, title: "牛肉一口酥", tags: ["牛肉", "薯仔", "煎"], notes: "材料：牛肉 80g、蒸熟薯仔 40g、粟粉 5g、青菜碎 適量\n\n做法：將所有材料打勻後整成小餅，煎至兩面金黃", url: "", image: "" },
+  { id: 5, title: "寶寶麥樂雞（薯仔豆腐版）", tags: ["雞肉", "薯仔", "豆腐", "焗"], notes: "材料：豆腐 50g、薯仔 50g、雞柳 150g、粟粉 10g\n\n做法：打勻材料後整成形，表面塗油，180°C 焗 15 分鐘", url: "", image: "" },
+  { id: 6, title: "花椰菜豬肉丸", tags: ["豬肉", "西蘭花", "水煮"], notes: "材料：豬肉 210g、紅蘿蔔 45g、西蘭花 45g、粟粉 20g\n\n做法：材料攪勻搓成肉丸，放入滾水煮熟", url: "", image: "" },
+  { id: 7, title: "黑芝麻紅棗蒸糕", tags: ["黑芝麻", "紅棗", "蒸"], notes: "材料：黑芝麻粉 5g、紅棗 4粒、雞蛋 2隻、低筋麵粉 25g\n\n做法：打勻材料，蒸 20 分鐘後焗 5 分鐘", url: "", image: "" },
+  { id: 8, title: "豬肉豆腐蛋湯", tags: ["豬肉", "豆腐", "蒸"], notes: "材料：豬肉 120g、豆腐、雞蛋、粟米、粟粉\n\n做法：豆腐鋪底，放上拌勻的肉碎及雞蛋，加水蒸 25 分鐘", url: "", image: "" },
+  { id: 9, title: "三色蝦丸", tags: ["蝦", "西蘭花", "水煮"], notes: "材料：蝦、西蘭花、紅蘿蔔、粟米\n\n做法：蝦打成泥加入蔬菜粒，搓圓煮熟", url: "", image: "" },
+  { id: 10, title: "寶寶魚豆腐", tags: ["三文魚", "豆腐", "蒸"], notes: "材料：三文魚 60g、紅蘿蔔 10g、粟粉 10g、雞蛋 1隻\n\n做法：材料打勻入模，蒸 20 分鐘後焗 5 分鐘", url: "", image: "" },
+  { id: 11, title: "黑芝麻燕麥餅", tags: ["黑芝麻", "燕麥", "煎"], notes: "材料：麥皮 100g、牛奶 80ml、雞蛋 2隻、黑芝麻粉 8g\n\n做法：麥皮泡熱水後加入其餘材料攪勻煎熟", url: "", image: "" },
+  { id: 12, title: "寶寶麥樂雞（薯仔版）", tags: ["雞肉", "薯仔", "氣炸"], notes: "材料：薯仔 100g、雞肉泥 200g、粟粉 20g、雞蛋 1隻\n\n做法：氣炸鍋 180°C 10 分鐘，反面再 6 分鐘", url: "", image: "" },
+  { id: 13, title: "南瓜蒸糕", tags: ["南瓜", "蒸"], notes: "材料：南瓜 50g、雞蛋 1隻、低筋麵粉 30g\n\n做法：南瓜蒸軟與蛋、粉打勻，蒸 20 分鐘焗 5 分鐘", url: "", image: "" },
+  { id: 14, title: "香蕉烤蛋奶", tags: ["香蕉", "氣炸"], notes: "材料：香蕉 1條、雞蛋 2隻、牛奶 150ml、黑芝麻\n\n做法：香蕉切片，倒入蛋奶液，氣炸 160°C 20 分鐘", url: "", image: "" },
+  { id: 15, title: "牛油粟米三文魚麵", tags: ["三文魚", "麵", "主食"], notes: "材料：麵、三文魚、粟米、牛油\n\n做法：三文魚煎熟，粟米煮熟加牛油，淋在熟麵上", url: "", image: "" },
+  { id: 16, title: "橙香馬鈴薯雞肉", tags: ["雞肉", "薯仔", "水果"], notes: "材料：薯仔、雞髀肉、橙汁、橙片、牛油\n\n做法：薯仔雞肉煎香，加入橙汁、橙片、牛油煮熟", url: "", image: "" },
+  { id: 17, title: "翠玉瓜蛋餅", tags: ["翠玉瓜", "煎"], notes: "材料：翠玉瓜 90g、紅蘿蔔 45g、雞蛋 1隻、麵粉 30g\n\n做法：蔬菜切絲焯水，加蛋粉拌勻煎熟", url: "", image: "" },
+  { id: 18, title: "鱈魚山藥餅", tags: ["鱈魚", "山藥", "煎"], notes: "材料：鱈魚 50g、山藥 40g、紅蘿蔔、西蘭花、粉類\n\n做法：鱈魚山藥打泥，拌入碎菜及粉類煎熟", url: "", image: "" },
+  { id: 19, title: "時蔬蒸雞髀", tags: ["雞肉", "薯仔", "蒸"], notes: "材料：紅蘿蔔、薯仔、香菇、雞髀\n\n做法：時蔬略炒，放上雞髀及薑片蒸 30 分鐘", url: "", image: "" },
+  { id: 20, title: "藍莓香蕉燕麥小蛋糕", tags: ["藍莓", "香蕉", "燕麥", "焗"], notes: "材料：香蕉 80g、燕麥 40g、雞蛋 2隻、乳酪、藍莓\n\n做法：材料拌勻入模放藍莓，180°C 焗 25 分鐘", url: "", image: "" },
+  { id: 21, title: "寶寶香蕉批", tags: ["香蕉", "麵包", "氣炸"], notes: "材料：麵包、香蕉泥、蛋液\n\n做法：麵包包入香蕉泥，叉壓邊位，氣炸 180°C 7 分鐘", url: "", image: "" },
+  { id: 22, title: "牛油果蒸蛋糕", tags: ["牛油果", "蒸"], notes: "材料：牛油果 40g、雞蛋 1隻、低筋麵粉 30g\n\n做法：牛油果雞蛋打 3 分鐘，加粉拌勻蒸熟", url: "", image: "" },
+  { id: 23, title: "黑芝麻豆腐糕", tags: ["黑芝麻", "豆腐", "蒸"], notes: "材料：黑芝麻 5g、低筋麵粉 10g、雞蛋 1隻、嫩豆腐 90g\n\n做法：全部打 2 分鐘，蒸 20 分鐘焗 5 分鐘", url: "", image: "" },
+  { id: 24, title: "牛油果曲奇", tags: ["牛油果", "焗"], notes: "材料：牛油果 90g、雞蛋 1隻、低筋麵粉 35g\n\n做法：攪勻擠花，140°C 焗 30 分鐘", url: "", image: "" },
+  { id: 25, title: "牛油果鬆餅", tags: ["牛油果", "煎"], notes: "材料：牛油果 半個、雞蛋 1隻、牛奶 50g、低筋麵粉 30g\n\n做法：材料打勻煎至金黃", url: "", image: "" },
+  { id: 26, title: "黑芝麻鬆餅", tags: ["黑芝麻", "紅棗", "煎"], notes: "材料：黑芝麻 5g、紅棗 1粒、雞蛋 1隻、麵粉 15g\n\n做法：打 3 分鐘，加粉拌勻煎熟", url: "", image: "" },
+  { id: 27, title: "南瓜餅", tags: ["南瓜", "焗"], notes: "材料：南瓜 200g、雞蛋 1隻、低筋麵粉 3大匙\n\n做法：南瓜切丁拌勻材料，180°C 焗 20 分鐘", url: "", image: "" },
+  { id: 28, title: "蘋果批", tags: ["蘋果", "氣炸"], notes: "材料：蘋果 1隻、雞蛋 2隻、低筋麵粉 25g\n\n做法：蘋果丁拌勻材料，氣炸 320°F 15 分鐘", url: "", image: "" },
+  { id: 29, title: "香蕉蛋餅", tags: ["香蕉", "煎"], notes: "材料：香蕉 1條、雞蛋 1隻、牛奶 50g、麵粉 25g\n\n做法：香蕉切片鋪底，倒入麵糊煎至兩面金黃", url: "", image: "" },
+  { id: 30, title: "香蕉餅仔", tags: ["香蕉", "煎"], notes: "材料：香蕉 1條、雞蛋 1隻、麵粉 30g\n\n做法：全部材料打勻，煎成小餅", url: "", image: "" },
+  { id: 31, title: "香蕉燕麥蛋糕", tags: ["香蕉", "燕麥", "焗"], notes: "材料：香蕉 1條、雞蛋 1隻、燕麥 30g、花生醬 1匙\n\n做法：全部攪勻，180°C 焗 20 分鐘", url: "", image: "" },
+  { id: 32, title: "紅薯餅仔", tags: ["番薯", "焗"], notes: "材料：蒸熟紅薯 150g、雞蛋 1隻、麵粉 30g\n\n做法：紅薯壓泥拌勻材料，160°C 焗 20 分鐘", url: "", image: "" },
+  { id: 33, title: "無糖香蕉小蛋糕", tags: ["香蕉", "山藥", "焗"], notes: "材料：山藥 90g、香蕉 65g、雞蛋 1隻、奶油、麵粉\n\n做法：材料打 2 分鐘，170°C 焗 15 分鐘", url: "", image: "" },
+  { id: 34, title: "椰棗餅乾", tags: ["椰棗", "山藥", "焗"], notes: "材料：山藥 90g、雞蛋 1隻、椰棗 20g、麵粉 15g\n\n做法：椰棗去核打泥，擠花形狀，150°C 焗 15 分鐘", url: "", image: "" },
+  { id: 35, title: "紫薯蛋撻", tags: ["紫薯", "甜品", "焗"], notes: "材料：紫薯 100g、低筋麵粉 30g、雞蛋 1隻、牛奶 30g\n\n做法：紫薯泥做塔皮，倒入蛋奶液，180°C 焗 20 分鐘", url: "", image: "" },
+  { id: 36, title: "地瓜巴斯克蛋糕", tags: ["地瓜", "焗"], notes: "材料：烤地瓜 100g、Yogurt 80g、牛油 20g、雞蛋 1隻\n\n做法：全部攪勻入模，200°C 焗 20 分鐘", url: "", image: "" },
+  { id: 37, title: "菠菜餅仔", tags: ["菠菜", "煎"], notes: "材料：菠菜 1拃、雞蛋 1隻、低筋麵粉 30g\n\n做法：菠菜焯水後與蛋打勻，加粉煎熟", url: "", image: "" },
+  { id: 38, title: "菠菜鮮蝦麵", tags: ["菠菜", "蝦", "水煮"], notes: "材料：菠菜 30g、鮮蝦 5隻、雞蛋 1隻、麵粉 30g\n\n做法：材料打泥放入唧袋，唧入微滾水中煮熟", url: "", image: "" },
+  { id: 39, title: "薯仔蘋果餅", tags: ["薯仔", "蘋果", "煎"], notes: "材料：薯仔 100g、紅蘿蔔 25g、蘋果、麵粉 25g\n\n做法：材料蒸熟壓泥拌麵粉，煎至金黃", url: "", image: "" },
+  { id: 40, title: "蘋果芝麻糕", tags: ["蘋果", "黑芝麻", "蒸"], notes: "材料：蘋果 90g、黑芝麻粉 10g、低筋麵粉 30g、雞蛋 1隻\n\n做法：打勻材料，蒸 20 分鐘焗 5 分鐘", url: "", image: "" },
+  { id: 41, title: "白蘿蔔雪梨湯", tags: ["雪梨", "湯", "止咳"], notes: "材料：雪梨、蘋果、白蘿蔔、紅棗\n\n做法：加水煲 20 分鐘即可", url: "", image: "" },
+  { id: 42, title: "藍莓乳酪窩夫", tags: ["藍莓", "乳酪", "窩夫"], notes: "材料：麵粉 30g、雞蛋 1隻、乳酪 40g、藍莓\n\n做法：拌成麵糊加入藍莓，窩夫機煎熟", url: "", image: "" },
+  { id: 43, title: "南瓜布丁", tags: ["南瓜", "蒸"], notes: "材料：雞蛋 2隻、牛奶 100ml、南瓜 適量\n\n做法：南瓜片鋪底倒入蛋奶液，蒸 20 分鐘焗 5 分鐘", url: "", image: "" },
+  { id: 44, title: "番薯焗小方塊", tags: ["番薯", "焗"], notes: "材料：番薯 1條、植物油\n\n做法：切 1.5cm 方塊，180°C 焗 25-30 分鐘", url: "", image: "" },
+  { id: 45, title: "山藥香蕉餅", tags: ["山藥", "香蕉", "煎"], notes: "材料：山藥 150g、西蘭花、低筋麵粉 30g、香蕉片\n\n做法：山藥泥包入香蕉片煎熟", url: "", image: "" },
+  { id: 46, title: "菠菜牛肉肉鬆餅", tags: ["菠菜", "牛肉", "窩夫"], notes: "材料：雞蛋、麵粉、菠菜、牛絞肉、鮮奶\n\n做法：材料拌勻，放入鬆餅機煮熟", url: "", image: "" },
+  { id: 47, title: "菠菜香蕉窩夫", tags: ["菠菜", "香蕉", "窩夫"], notes: "材料：菠菜、香蕉、雞蛋、牛奶、麵粉\n\n做法：菠菜焯水切碎，全部攪勻放入窩夫機", url: "", image: "" },
+  { id: 48, title: "藍莓乳酪蛋糕", tags: ["藍莓", "乳酪", "焗"], notes: "材料：Greek yogurt 100g、雞蛋 1隻、麵粉 15g、藍莓\n\n做法：全部攪勻，180°C 焗 35 分鐘", url: "", image: "" },
+  { id: 49, title: "薯仔波波", tags: ["薯仔", "黑芝麻", "焗"], notes: "材料：薯仔 200g、油 10g、芝麻粉\n\n做法：薯仔泥拌油及芝麻，擠花 150°C 焗 25 分鐘", url: "", image: "" },
+{ id: 50, title: "香蕉紅蘿蔔Pancake", tags: ["香蕉", "紅蘿蔔", "煎"], notes: "材料：香蕉 1條、蒸熟紅蘿蔔粒 適量、雞蛋 1隻、低筋麵粉 40g\n\n做法：所有材料攪勻，煎至兩面金黃", url: "", image: "" },
+  { id: 51, title: "藍莓疏乎厘蛋糕", tags: ["藍莓", "疏乎厘", "焗"], notes: "材料：雞蛋 2隻、牛奶 30g、低筋麵粉 40g、粟粉 12g、檸檬汁、藍莓\n\n做法：1. 蛋黃蛋白分開 2. 蛋黃加牛奶粉類攪勻 3. 蛋白打發至尖角 4. 混合拌勻並放藍莓 5. 175°C 焗 25 分鐘", url: "", image: "" },
+  { id: 52, title: "香蕉芝麻豆腐", tags: ["香蕉", "黑芝麻", "豆腐", "蒸"], notes: "材料：香蕉 1條、芝麻 適量、豆腐 1件\n\n做法：所有材料放入調理機打勻，蒸熟即可", url: "", image: "" },
+  { id: 53, title: "士多啤梨 Muffin", tags: ["士多啤梨", "Muffin", "焗"], notes: "材料：香蕉 1條、雞蛋 1隻、牛奶 3湯匙、牛油 20g、麵粉 40g、士多啤梨\n\n做法：材料攪勻加士多啤梨粒，180°C 焗 22 分鐘", url: "", image: "" },
+  { id: 54, title: "香蕉 Cookies", tags: ["香蕉", "燕麥", "焗"], notes: "材料：香蕉 1條、Oat flour 2/3杯、雞蛋 1隻\n\n做法：材料打勻，170°C 焗 15 分鐘", url: "", image: "" },
+  { id: 55, title: "焗番薯條", tags: ["番薯", "焗"], notes: "材料：紅肉番薯 適量、橄欖油 少量\n\n做法：番薯切條拌油，180°C 焗 20-30 分鐘", url: "", image: "" },
+  { id: 56, title: "藍莓蛋糕", tags: ["藍莓", "焗"], notes: "材料：雞蛋 2隻、鮮奶 33g、麵粉 40g\n\n做法：蛋白打發，混合蛋黃糊及鮮奶麵粉，170°C 焗 20 分鐘", url: "", image: "" },
+  { id: 57, title: "合桃山藥紅棗蒸糕", tags: ["山藥", "紅棗", "合桃", "蒸"], notes: "材料：山藥 40g、雞蛋 1隻、核桃 2粒、紅棗 3粒、麵粉 15g\n\n做法：攪勻，蒸 20 分鐘，焗 5 分鐘", url: "", image: "" },
+  { id: 58, title: "香蕉牛油果燕麥蛋糕", tags: ["香蕉", "牛油果", "燕麥", "焗"], notes: "材料：香蕉 1條、牛油果 半個、雞蛋 1隻、燕麥 1杯、牛奶\n\n做法：壓泥拌勻，200°C 焗 20 分鐘", url: "", image: "" },
+  { id: 59, title: "香蕉窩夫", tags: ["香蕉", "窩夫", "煎"], notes: "材料：香蕉 1條、雞蛋 1隻、牛奶 15g、低筋麵粉 40g\n\n做法：攪勻，放入窩夫機煮熟", url: "", image: "" },
+  { id: 60, title: "蘋果燕麥蛋糕", tags: ["蘋果", "燕麥", "氣炸"], notes: "材料：蘋果 150g、雞蛋 1隻、燕麥 60g、泡打粉\n\n做法：打勻，170°C 氣炸 15 分鐘", url: "", image: "" },
+  { id: 61, title: "薯仔芝士波", tags: ["薯仔", "芝士", "焗"], notes: "材料：薯仔、芝士、麵粉\n\n做法：薯仔壓泥包入芝士，180°C 焗 15 分鐘", url: "", image: "" },
+  { id: 62, title: "蘋果燕麥餅", tags: ["蘋果", "燕麥", "煎"], notes: "材料：蘋果 1隻、燕麥 60g、雞蛋 1隻、黑芝麻\n\n做法：打成泥煎熟", url: "", image: "" },
+  { id: 63, title: "烤地瓜餅", tags: ["番薯", "焗"], notes: "材料：番薯 60g、牛奶 30g、麵粉 30g\n\n做法：蒸熟打泥，150°C 焗 10-15 分鐘", url: "", image: "" },
+  { id: 64, title: "士多啤梨香蕉蛋糕", tags: ["士多啤梨", "香蕉", "焗"], notes: "材料：士多啤梨、香蕉、乳酪、麵粉、雞蛋\n\n做法：拌勻入模鋪上士多啤梨，180°C 焗 20 分鐘", url: "", image: "" },
+  { id: 65, title: "南瓜蘋果餅", tags: ["南瓜", "蘋果", "焗"], notes: "材料：南瓜 100g、蘋果 50g、麵粉 30g、雞蛋 1隻\n\n做法：切丁攪勻，180°C 焗 15 分鐘", url: "", image: "" },
+  { id: 66, title: "藍莓鬆餅", tags: ["藍莓", "煎"], notes: "材料：藍莓 50g、雞蛋 1隻、麵粉 30g\n\n做法：打勻，煎至兩面金黃", url: "", image: "" }
+];
+let recipes = JSON.parse(localStorage.getItem("recipes")) || defaultRecipes;
+
+const recipeGrid = document.getElementById("recipeGrid");
+const searchInput = document.getElementById("searchInput");
+const tagFilter = document.getElementById("tagFilter");
+
+function saveStorage(){ localStorage.setItem("recipes", JSON.stringify(recipes)); }
+function openModal(){ document.getElementById("modal").classList.replace("hidden","flex"); }
+function closeModal(){ document.getElementById("modal").classList.replace("flex","hidden"); }
+
+function parseContent(text) {
+  if (!text) return "";
+  const sections = text.split(/做法：|做法/i);
+  let ingredientsPart = sections[0].replace(/材料：|材料/i, "").trim();
+  let methodPart = sections[1] ? sections[1].trim() : "";
+
+  const ingredientsHTML = ingredientsPart.split('\n')
+    .filter(line => line.trim() !== "")
+    .map(line => `<span class="ingredient-item">• ${line.trim()}</span>`)
+    .join("");
+
+  return `
+    <div class="recipe-section-title">材料</div>
+    <div class="mb-2 text-zinc-600">${ingredientsHTML}</div>
+    ${methodPart ? `<div class="recipe-section-title">做法</div><div class="step-text text-zinc-700">${methodPart}</div>` : ""}
+  `;
+}
+
+function saveRecipe(){
+  const title = document.getElementById("title").value;
+  const url = document.getElementById("url").value;
+  const notes = document.getElementById("notes").value;
+  const tags = document.getElementById("tags").value.split(",").map(t=>t.trim()).filter(Boolean);
+  const imageInput = document.getElementById("image");
+
+  let recipe = { id:Date.now(), title, url, notes, tags, image:"" };
+  if(imageInput.files[0]){
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      recipe.image = e.target.result;
+      recipes.unshift(recipe);
+      saveAndRender();
+    };
+    reader.readAsDataURL(imageInput.files[0]);
+  } else {
+    recipes.unshift(recipe);
+    saveAndRender();
+  }
+}
+
+function saveAndRender(){
+  saveStorage();
+  renderRecipes();
+  closeModal();
+}
+
+function deleteRecipe(id){
+  if(!confirm("確定要刪除嗎？")) return;
+  recipes = recipes.filter(r=>r.id !== id);
+  saveStorage();
+  renderRecipes();
+}
+
+function renderTags(){
+  const allTags = [...new Set(recipes.flatMap(r=>r.tags))];
+  const current = tagFilter.value;
+  tagFilter.innerHTML = `<option value="">所有標籤</option>` + 
+    allTags.map(t => `<option value="${t}" ${t===current?'selected':''}>${t}</option>`).join("");
+}
+
+function renderRecipes(){
+  const search = searchInput.value.toLowerCase();
+  const selectedTag = tagFilter.value;
+  const filtered = recipes.filter(r => {
+    const matchSearch = r.title.toLowerCase().includes(search) || r.notes.toLowerCase().includes(search);
+    const matchTag = !selectedTag || r.tags.includes(selectedTag);
+    return matchSearch && matchTag;
+  });
+
+  recipeGrid.innerHTML = filtered.map(recipe => `
+    <div class="card rounded-3xl overflow-hidden border border-white/50 shadow-sm hover:shadow-xl transition flex flex-col h-fit">
+      ${recipe.image ? `<img src="${recipe.image}" class="w-full h-48 object-cover" />` : 
+      `<div class="h-40 bg-zinc-100 flex items-center justify-center text-5xl">🍱</div>`}
+      <div class="p-6">
+        <div class="flex items-start justify-between gap-3 mb-3">
+          <h2 class="text-2xl font-black leading-tight text-zinc-900">${recipe.title}</h2>
+          <button onclick="deleteRecipe(${recipe.id})" class="text-zinc-300 hover:text-red-500 transition">🗑️</button>
+        </div>
+        <div class="flex flex-wrap gap-2 mb-2">
+          ${recipe.tags.map(tag=>`<span class="bg-orange-100 text-orange-700 px-3 py-0.5 rounded-full text-xs font-bold">#${tag}</span>`).join("")}
+        </div>
+        <div class="text-sm leading-relaxed">
+          ${parseContent(recipe.notes)}
+        </div>
+        ${recipe.url ? `<a href="${recipe.url}" target="_blank" class="inline-block mt-6 text-sm font-bold text-zinc-400 hover:text-black transition underline">🔗 參考連結</a>` : ""}
+      </div>
+    </div>
+  `).join("");
+  renderTags();
+}
+
+searchInput.addEventListener("input", renderRecipes);
+tagFilter.addEventListener("change", renderRecipes);
+renderRecipes();
+  if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js");
+}
+</script>
+</body>
+</html>
